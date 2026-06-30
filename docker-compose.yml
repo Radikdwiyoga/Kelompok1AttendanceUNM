@@ -1,0 +1,39 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: synalabs-attendance
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=mysql://synalabs:P%40ssw0rd123%21%21@synalabs-mysql:3306/synalabs_attendance
+      - JWT_SECRET=synalabs-secret-key-2026-v1
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    container_name: synalabs-mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=P@ssw0rd123!!
+      - MYSQL_DATABASE=synalabs_attendance
+      - MYSQL_USER=synalabs
+      - MYSQL_PASSWORD=P@ssw0rd123!!
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "synalabs", "-pP@ssw0rd123!!"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:

@@ -1,0 +1,78 @@
+PANDUAN INSTALASI LOCALHOST (WINDOWS / LARAGON)
+==============================================
+
+PERSYARATAN
+-----------
+Pastikan Anda sudah menginstal:
+1. Node.js (versi 18 atau lebih baru)
+2. MySQL (Laragon / XAMPP)
+
+LANGKAH-LANGKAH INSTALASI
+-------------------------
+
+1. Persiapan Database
+   - Buka Laragon atau XAMPP, lalu aktifkan MySQL.
+   - Buat database baru melalui phpMyAdmin atau HeidiSQL dengan nama:
+     synalabs_attendance
+
+2. Konfigurasi Environment
+   - Buka file .env di folder root project.
+   - Pastikan DATABASE_URL sudah sesuai.
+
+     Contoh:
+     DATABASE_URL="mysql://root:@localhost:3306/synalabs_attendance"
+
+     (Sesuaikan jika MySQL menggunakan password)
+
+3. Instalasi Dependencies
+   - Buka Terminal (CMD / PowerShell) di folder project.
+   - Jalankan:
+     npm install
+
+4. Sinkronisasi Database
+   - Jalankan perintah berikut untuk membuat tabel otomatis:
+     npx prisma db push
+
+5. Build Project
+   - Jalankan build agar aplikasi stabil (mode production):
+     npm run build
+
+6. Menjalankan Aplikasi
+   - Jalankan aplikasi:
+     npm start
+
+   - Akses di browser:
+     http://localhost:3000
+
+CATATAN TAMBAHAN
+----------------
+- Ganti port (opsional):
+  npx next start -p 8080
+
+- Pastikan folder berikut tersedia:
+  public/models
+  (berisi file model AI / face detector)
+
+- Gunakan Google Chrome atau Microsoft Edge
+  untuk performa scan wajah terbaik.
+
+PERINTAH TAMBAHAN
+-----------------
+
+Reset Database (hapus semua data lama):
+npx prisma db push --force-reset
+
+Seed Data Awal (Hanya Admin):
+node prisma/seed.js
+
+KETERANGAN SISTEM
+-----------------
+- Username Admin: admin@nusamandiri.ac.id
+- Password Admin: P@ssw0rd123!!
+- Timezone: Asia/Jakarta (WIB)
+- Unit Data: Menggunakan NIM (Nomor Induk Mahasiswa)
+
+==============================================
+Universitas Nusa Mandiri
+UNM Attendance v1.0 PRO
+==============================================

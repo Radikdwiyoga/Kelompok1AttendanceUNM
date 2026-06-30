@@ -1,0 +1,258 @@
+@import "tailwindcss";
+
+/* ─── Theme Tokens ─── */
+@theme {
+  --font-lato: "Lato", sans-serif;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+}
+
+/* ─── Root Colors ─── */
+:root {
+  --primary: #1e40af;
+  --primary-hover: #1d4ed8;
+
+  --bg-app: #fcfdfe;
+  --bg-card: #ffffff;
+
+  --text-main: #0f172a;
+  --text-secondary: #475569;
+
+  --border-subtle: #f1f5f9;
+  --border-default: #e2e8f0;
+}
+
+/* ─── Base Reset ─── */
+* {
+  box-sizing: border-box;
+  font-style: normal !important;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-lato);
+  background: var(--bg-app);
+  color: var(--text-main);
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Reusable UI Tokens ─── */
+.label {
+  @apply text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1;
+}
+
+/* ─── App Container (Mobile-first shell) ─── */
+.app-container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  display: flex;
+  flex-direction: column;
+
+  background: var(--bg-card);
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  padding-bottom: 80px;
+  /* space bottom nav */
+}
+
+/* Desktop Frame */
+@media (min-width: 480px) {
+  .app-container {
+    margin: 3vh auto;
+    min-height: 94vh;
+
+    border-radius: var(--radius-3xl);
+    border: 1px solid var(--border-subtle);
+
+    box-shadow: 0 10px 50px -15px rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* ─── Cards ─── */
+.academic-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border-default);
+
+  padding: 1.25rem;
+
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.03);
+}
+
+/* ─── Inputs ─── */
+.academic-input {
+  width: 100%;
+  height: 44px;
+
+  border-radius: 0.85rem;
+  border: 1px solid var(--border-default);
+
+  padding: 0 1rem;
+  font-size: 0.825rem;
+  font-weight: 600;
+
+  color: var(--text-main);
+  background: #fcfdfe;
+
+  transition: all 0.2s ease;
+}
+
+/* Focus State */
+.academic-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.08);
+}
+
+/* Optional: Icon input support */
+.academic-input.with-icon {
+  padding-left: 2.75rem;
+}
+
+/* ─── Buttons ─── */
+.academic-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 1.5rem;
+  height: 44px;
+
+  border-radius: 0.85rem;
+
+  font-size: 0.875rem;
+  font-weight: 700;
+
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+/* Primary */
+.academic-btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.academic-btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+/* Secondary */
+.academic-btn-secondary {
+  background: white;
+  color: var(--text-main);
+  border: 1px solid var(--border-default);
+}
+
+.academic-btn-secondary:hover {
+  background: var(--border-subtle);
+}
+
+/* ─── Bottom Navigation ─── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  max-width: 480px;
+  margin: 0 auto;
+
+  height: 80px;
+
+  display: flex;
+  align-items: center;
+
+  padding-bottom: env(safe-area-inset-bottom);
+
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 2rem 2rem 0 0;
+
+  z-index: 1000;
+}
+
+/* Nav Item */
+.nav-item {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 3px;
+  color: #94a3b8;
+}
+
+.nav-item.active {
+  color: var(--primary);
+}
+
+.nav-item-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.nav-item-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ─── Header ─── */
+.app-header {
+  height: 56px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 1.25rem;
+
+  background: white;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ─── Animations ─── */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── Scrollbar Hide ─── */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
