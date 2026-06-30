@@ -1,4 +1,4 @@
-# 🎓 Synalabs Smart Attendance System (UNM)
+# 🎓 Smart Attendance System (UNM)
 
 Sistem Presensi Wajah Interaktif berbasis **AI (Artificial Intelligence)** dan **Geofencing** untuk Mahasiswa Universitas Nusa Mandiri (UNM) atau instansi akademik umum. Sistem ini mendeteksi wajah secara real-time melalui web browser, memvalidasi keberadaan mahasiswa di radius kampus yang tepat, dan mensinkronisasikan kehadiran berdasarkan sistem penjadwalan kelas yang sangat akurat.
 
@@ -122,5 +122,3 @@ Di Browser Google Chrome HP yang membuka website ini, ketik di kotak URL: `chrom
 Masukkan URL LAN *(e.g. `http://192.168.x.x:3000`)* lalu `Enable`. Lakukan Relaunch pada browser dan kamera siap menyorot!
 
 ---
-
-*Didevelop oleh TIM Synalabs dengan teknologi Agentic Web.*
