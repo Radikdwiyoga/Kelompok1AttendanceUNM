@@ -588,12 +588,15 @@ export default function AttendancePage() {
                     setViewMode('camera');
                   }
                 }}
-                disabled={locationPhase !== 'valid' && locationPhase !== 'out_of_bounds'}
-                className={`w-full mt-4 font-black text-[11px] uppercase tracking-widest py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 ${locationPhase === 'valid'
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
-                  : locationPhase === 'out_of_bounds'
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200'
-                    : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                disabled={fakeGpsWarning !== null || (locationPhase !== 'valid' && locationPhase !== 'out_of_bounds')}
+                className={`w-full mt-4 font-black text-[11px] uppercase tracking-widest py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 ${
+                  fakeGpsWarning
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                    : locationPhase === 'valid'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
+                    : locationPhase === 'out_of_bounds'
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200'
+                      : 'bg-slate-300 text-slate-500 cursor-not-allowed'
                   }`}
               >
                 <Scan className="w-4 h-4" /> Mulai Pindai Wajah
@@ -691,9 +694,18 @@ export default function AttendancePage() {
 
         {isApiLoaded && viewMode === 'camera' && (
           <div className="flex flex-col items-center justify-center gap-4 mt-6">
+            {fakeGpsWarning && (
+              <div className="w-full max-w-[340px] bg-rose-50 border border-rose-400 rounded-2xl p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[10px] font-black text-rose-800 uppercase tracking-wide mb-1">Scan Diblokir — Lokasi Mencurigakan</p>
+                  <p className="text-[11px] font-semibold text-rose-700 leading-relaxed">{fakeGpsWarning}</p>
+                </div>
+              </div>
+            )}
             <button
               onClick={() => handleScan(true)}
-              disabled={isScanning || isLivenessChecking || !!result}
+              disabled={isScanning || isLivenessChecking || !!result || !!fakeGpsWarning}
               className="w-full max-w-[340px] h-14 bg-blue-600 text-white rounded-2xl font-black text-[13px] uppercase tracking-[0.1em] shadow-xl shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isScanning || isLivenessChecking ? (
@@ -702,10 +714,12 @@ export default function AttendancePage() {
                 <><Scan className="w-5 h-5" /> Pindai Sekarang</>
               )}
             </button>
-            <div className="bg-blue-600/10 border border-blue-500/20 px-6 py-3 rounded-xl flex items-center justify-center gap-3 animate-pulse w-full max-w-[340px]">
-              <div className="w-2 h-2 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.8)]" />
-              <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em]">Atau Tekan Space/Enter</p>
-            </div>
+            {!fakeGpsWarning && (
+              <div className="bg-blue-600/10 border border-blue-500/20 px-6 py-3 rounded-xl flex items-center justify-center gap-3 animate-pulse w-full max-w-[340px]">
+                <div className="w-2 h-2 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.8)]" />
+                <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em]">Atau Tekan Space/Enter</p>
+              </div>
+            )}
           </div>
         )}
 
