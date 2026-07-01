@@ -66,6 +66,64 @@ function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2
   return R * c;
 }
 
+// Anti-fake GPS detection (Tingkat 1 & 2)
+interface GpsPoint { lat: number; lng: number; accuracy: number; timestamp: number; }
+
+function detectFakeGps(
+  current: GpsPoint,
+  history: GpsPoint[]
+): { isSuspicious: boolean; reason: string | null } {
+
+  // Tingkat 1a: Akurasi terlalu buruk (> 500m biasanya bukan GPS hardware asli)
+  if (current.accuracy > 500) {
+    return {
+      isSuspicious: true,
+      reason: `Akurasi GPS terlalu rendah (${Math.round(current.accuracy)}m). Pastikan GPS aktif dan sinyal baik.`,
+    };
+  }
+
+  // Tingkat 1b: Akurasi terlalu sempurna secara konsisten (< 3m selalu = mencurigakan)
+  if (history.length >= 4) {
+    const recentAccuracies = [...history.slice(-4), current].map(p => p.accuracy);
+    const allTooAccurate = recentAccuracies.every(a => a < 3);
+    if (allTooAccurate) {
+      return {
+        isSuspicious: true,
+        reason: 'Sinyal GPS terlalu sempurna dan tidak berfluktuasi. Terindikasi lokasi palsu.',
+      };
+    }
+  }
+
+  // Tingkat 2: Cek kecepatan perpindahan tidak wajar
+  if (history.length >= 1) {
+    const prev = history[history.length - 1];
+    const distanceM = getDistanceFromLatLonInM(prev.lat, prev.lng, current.lat, current.lng);
+    const timeDiffSec = (current.timestamp - prev.timestamp) / 1000;
+
+    if (timeDiffSec > 0 && timeDiffSec < 300) { // hanya cek dalam 5 menit terakhir
+      const speedKmh = (distanceM / 1000) / (timeDiffSec / 3600);
+
+      // Kecepatan > 300 km/jam tidak mungkin untuk absen kampus
+      if (speedKmh > 300) {
+        return {
+          isSuspicious: true,
+          reason: `Lokasi berpindah ${Math.round(distanceM / 1000)}km dalam ${Math.round(timeDiffSec)} detik. Terindikasi lokasi palsu.`,
+        };
+      }
+
+      // Loncat > 50km dalam < 60 detik
+      if (distanceM > 50000 && timeDiffSec < 60) {
+        return {
+          isSuspicious: true,
+          reason: `Lokasi berpindah ${Math.round(distanceM / 1000)}km secara tiba-tiba. Terindikasi lokasi palsu.`,
+        };
+      }
+    }
+  }
+
+  return { isSuspicious: false, reason: null };
+}
+
 export default function AttendancePage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isApiLoaded, setIsApiLoaded] = useState(false);
@@ -88,6 +146,8 @@ export default function AttendancePage() {
   const [showOutOfBoundsConfirm, setShowOutOfBoundsConfirm] = useState(false);
   const [enableLivenessCheck, setEnableLivenessCheck] = useState(true);
   const [streamAnalysis, setStreamAnalysis] = useState<any>(null);
+  const [fakeGpsWarning, setFakeGpsWarning] = useState<string | null>(null);
+  const [gpsHistory, setGpsHistory] = useState<Array<{ lat: number, lng: number, accuracy: number, timestamp: number }>>([]);
   const cleanupStreamRef = useRef<(() => void) | null>(null);
 
   // Load settings and initialize
@@ -122,6 +182,25 @@ export default function AttendancePage() {
 
     const handleGpsSuccess = (pos: GeolocationPosition) => {
       setLocationDenied(false);
+      const newPoint: GpsPoint = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        timestamp: pos.timestamp,
+      };
+
+      setGpsHistory(prev => {
+        // Jalankan deteksi fake GPS
+        const { isSuspicious, reason } = detectFakeGps(newPoint, prev);
+        if (isSuspicious) {
+          setFakeGpsWarning(reason);
+        } else {
+          setFakeGpsWarning(null);
+        }
+        // Simpan max 10 titik terakhir
+        return [...prev.slice(-9), newPoint];
+      });
+
       setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
     };
 
@@ -235,6 +314,19 @@ export default function AttendancePage() {
       setIsScanning(true);
       setResult(null);
 
+      // Cek fake GPS sebelum mulai scan
+      if (fakeGpsWarning) {
+        setIsScanning(false);
+        setResult({
+          name: 'Terdeteksi Lokasi Palsu',
+          status: 'Gagal',
+          confidence: 0,
+          message: `⚠️ ${fakeGpsWarning} Matikan aplikasi fake GPS dan coba lagi.`,
+          isWarning: true,
+        });
+        return;
+      }
+
       try {
         if (enableLivenessCheck) {
           setIsLivenessChecking(true);
@@ -324,6 +416,8 @@ export default function AttendancePage() {
             locationDenied: locationDenied,
             livenessScore: livenessResult?.score ?? 1,
             livenessDetails: livenessResult,
+            gpsAccuracy: gpsHistory.length > 0 ? gpsHistory[gpsHistory.length - 1].accuracy : null,
+            fakeGpsDetected: false, // sudah diblock sebelum sampai sini kalau true
           }),
         });
 
@@ -373,7 +467,7 @@ export default function AttendancePage() {
         });
       }
     },
-    [descriptors, accuracyThreshold, attendanceMode, locationPhase, enableLivenessCheck, livenessResult, currentDistance]
+    [descriptors, accuracyThreshold, attendanceMode, locationPhase, enableLivenessCheck, livenessResult, currentDistance, fakeGpsWarning, gpsHistory]
   );
 
   useEffect(() => {
@@ -398,7 +492,7 @@ export default function AttendancePage() {
   }, [isApiLoaded, isScanning, viewMode, handleScan]);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50 p-4 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4 space-y-6">
       <div className="max-w-md mx-auto">
         <div className="space-y-2 mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
@@ -412,10 +506,20 @@ export default function AttendancePage() {
 
         {enableLivenessCheck && (
           <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 mb-4 flex items-center gap-2">
-            <Eye className="w-5 h-5 text-emerald-600 shrink-0" />
+            <Eye className="w-5 h-5 text-emerald-600 flex-shrink-0" />
             <p className="text-xs font-bold text-emerald-800">
               Verifikasi keaslian wajah AKTIF ✓
             </p>
+          </div>
+        )}
+
+        {fakeGpsWarning && (
+          <div className="bg-rose-50 border border-rose-400 rounded-xl p-3 mb-4 flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-black text-rose-800 uppercase tracking-wide mb-0.5">⚠ Lokasi Mencurigakan</p>
+              <p className="text-xs font-semibold text-rose-700 leading-relaxed">{fakeGpsWarning}</p>
+            </div>
           </div>
         )}
 
@@ -522,7 +626,7 @@ export default function AttendancePage() {
             </div>
           </div>
         ) : (
-          <div className="relative aspect-square bg-slate-900 rounded-[2.5rem] overflow-hidden border-4 border-white shadow-xl mx-auto max-w-85">
+          <div className="relative aspect-square bg-slate-900 rounded-[2.5rem] overflow-hidden border-4 border-white shadow-xl mx-auto max-w-[340px]">
             {cameraError ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-50">
                 <VideoOff className="w-10 h-10 text-slate-200 mb-3" />
@@ -590,7 +694,7 @@ export default function AttendancePage() {
             <button
               onClick={() => handleScan(true)}
               disabled={isScanning || isLivenessChecking || !!result}
-              className="w-full max-w-85 h-14 bg-blue-600 text-white rounded-2xl font-black text-[13px] uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full max-w-[340px] h-14 bg-blue-600 text-white rounded-2xl font-black text-[13px] uppercase tracking-[0.1em] shadow-xl shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isScanning || isLivenessChecking ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -598,7 +702,7 @@ export default function AttendancePage() {
                 <><Scan className="w-5 h-5" /> Pindai Sekarang</>
               )}
             </button>
-            <div className="bg-blue-600/10 border border-blue-500/20 px-6 py-3 rounded-xl flex items-center justify-center gap-3 animate-pulse w-full max-w-85">
+            <div className="bg-blue-600/10 border border-blue-500/20 px-6 py-3 rounded-xl flex items-center justify-center gap-3 animate-pulse w-full max-w-[340px]">
               <div className="w-2 h-2 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.8)]" />
               <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em]">Atau Tekan Space/Enter</p>
             </div>
@@ -625,7 +729,7 @@ export default function AttendancePage() {
         {/* Out-of-Bounds Confirmation Dialog */}
         {showOutOfBoundsConfirm && (
           <div
-            className="fixed inset-0 z-200 flex items-center justify-center p-6 animate-fade-in"
+            className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-fade-in"
             onClick={() => setShowOutOfBoundsConfirm(false)}
           >
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" />
@@ -633,7 +737,7 @@ export default function AttendancePage() {
               className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm relative z-10 shadow-2xl flex flex-col items-center text-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-24 h-24 rounded-full flex items-center justify-center text-white shadow-xl mb-6 bg-linear-to-tr from-amber-500 to-amber-400 shadow-amber-500/30 ring-8 ring-slate-50">
+              <div className="w-24 h-24 rounded-full flex items-center justify-center text-white shadow-xl mb-6 bg-gradient-to-tr from-amber-500 to-amber-400 shadow-amber-500/30 ring-8 ring-slate-50">
                 <Target className="w-12 h-12" />
               </div>
 
@@ -674,7 +778,7 @@ export default function AttendancePage() {
 
         {result && (
           <div
-            className="fixed inset-0 z-200 flex items-center justify-center p-6 animate-fade-in"
+            className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-fade-in"
             onClick={() => setResult(null)}
           >
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" />
@@ -682,7 +786,7 @@ export default function AttendancePage() {
               className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm relative z-10 shadow-2xl flex flex-col items-center text-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className={`w-28 h-28 rounded-full flex items-center justify-center text-white shadow-xl mb-6 ${result.status === 'Gagal' ? 'bg-linear-to-tr from-rose-500 to-rose-400 shadow-rose-500/30' : result.isWarning ? 'bg-linear-to-tr from-amber-500 to-amber-400 shadow-amber-500/30' : 'bg-linear-to-tr from-blue-600 to-blue-400 shadow-blue-500/30'} animate-[bounce_1s_ease-in-out_infinite] ring-8 ring-slate-50`}>
+              <div className={`w-28 h-28 rounded-full flex items-center justify-center text-white shadow-xl mb-6 ${result.status === 'Gagal' ? 'bg-gradient-to-tr from-rose-500 to-rose-400 shadow-rose-500/30' : result.isWarning ? 'bg-gradient-to-tr from-amber-500 to-amber-400 shadow-amber-500/30' : 'bg-gradient-to-tr from-blue-600 to-blue-400 shadow-blue-500/30'} animate-[bounce_1s_ease-in-out_infinite] ring-8 ring-slate-50`}>
                 {result.status === 'Gagal' ? <AlertCircle className="w-14 h-14" /> : result.isWarning ? <AlertCircle className="w-14 h-14" /> : result.alreadyAttended ? <Info className="w-14 h-14" /> : <CheckCircle2 className="w-14 h-14" />}
               </div>
 
